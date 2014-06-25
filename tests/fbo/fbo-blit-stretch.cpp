@@ -324,6 +324,39 @@ blit(const TestCase &test)
 			  GL_COLOR_BUFFER_BIT, test.filter);
 }
 
+static GLuint
+rectangle_rgbw_texture(GLenum internalFormat, int w, int h, GLboolean mip,
+		       GLboolean alpha, GLenum basetype)
+{
+	GLfloat *data = piglit_rgbw_image(internalFormat, w, h,
+					  alpha, basetype);
+	GLuint tex;
+
+	glGenTextures(1, &tex);
+	glBindTexture(GL_TEXTURE_RECTANGLE, tex);
+	glTexParameteri(GL_TEXTURE_RECTANGLE,
+			GL_TEXTURE_WRAP_S,
+			GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_RECTANGLE,
+			GL_TEXTURE_WRAP_T,
+			GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_MAG_FILTER,
+			GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_MIN_FILTER,
+			GL_LINEAR);
+
+	glTexImage2D(GL_TEXTURE_RECTANGLE,
+		     0, /* level */
+		     internalFormat,
+		     w, h,
+		     0, /* border */
+		     GL_RGBA, GL_FLOAT,
+		     data);
+
+	free(data);
+
+	return tex;
+}
 
 static GLboolean
 run_test(const TestCase &test)
@@ -344,13 +377,13 @@ run_test(const TestCase &test)
 	const float color2[4] = {0.0f, 1.0f, 0.0f, 1.0f};
 	tex = piglit_checkerboard_texture(0, 0, test.srcW, test.srcH, 1, 1,  color1, color2);
 #else
-	tex = piglit_rgbw_texture(GL_RGBA, test.srcW, test.srcH, GL_FALSE, GL_TRUE, GL_UNSIGNED_NORMALIZED);
+	tex = rectangle_rgbw_texture(GL_RGBA, test.srcW, test.srcH, GL_FALSE, GL_TRUE, GL_UNSIGNED_NORMALIZED);
 #endif
-	glBindTexture(GL_TEXTURE_2D, tex);
+	glBindTexture(GL_TEXTURE_RECTANGLE, tex);
 
 	glFramebufferTexture2D(GL_FRAMEBUFFER,
 			       GL_COLOR_ATTACHMENT0,
-			       GL_TEXTURE_2D,
+			       GL_TEXTURE_RECTANGLE,
 			       tex,
 			       0);
 	assert(glGetError() == 0);
@@ -577,6 +610,7 @@ piglit_init(int argc, char **argv)
 	piglit_ortho_projection(piglit_width, piglit_height, GL_FALSE);
 
 	piglit_require_extension("GL_ARB_framebuffer_object");
+	piglit_require_extension("GL_ARB_texture_rectangle");
 
 	if (argc == 2)
 		sscanf(argv[1], "%d", &test_index);

@@ -2085,6 +2085,7 @@ add_plain_test(arb_pixel_buffer_object, 'pbo-teximage')
 add_plain_test(arb_pixel_buffer_object, 'pbo-teximage-tiling')
 add_plain_test(arb_pixel_buffer_object, 'pbo-teximage-tiling-2')
 add_concurrent_test(arb_pixel_buffer_object, 'texsubimage pbo')
+add_concurrent_test(arb_pixel_buffer_object, 'texsubimage rectangle pbo')
 add_concurrent_test(arb_pixel_buffer_object, 'texsubimage array pbo')
 add_concurrent_test(arb_pixel_buffer_object, 'texsubimage cube_map_array pbo')
 
@@ -2259,6 +2260,7 @@ add_concurrent_test(spec['ARB_texture_rectangle'], 'tex-miplevel-selection GL2:t
 add_concurrent_test(spec['ARB_texture_rectangle'], 'tex-miplevel-selection GL2:textureProj 2DRect')
 add_concurrent_test(spec['ARB_texture_rectangle'], 'tex-miplevel-selection GL2:textureProj 2DRect_ProjVec4')
 add_concurrent_test(spec['ARB_texture_rectangle'], 'tex-miplevel-selection GL2:textureProj 2DRectShadow')
+add_concurrent_test(spec['ARB_texture_rectangle'], 'texsubimage rectangle')
 
 arb_texture_storage = {}
 spec['ARB_texture_storage'] = arb_texture_storage

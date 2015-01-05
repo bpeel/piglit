@@ -236,6 +236,7 @@ equal_images(GLenum target,
 		ty = 0;
 		th = 1;
 		/* flow through */
+	case GL_TEXTURE_RECTANGLE_ARB:
 	case GL_TEXTURE_2D:
 	case GL_TEXTURE_1D_ARRAY:
 		tz = 0;
@@ -576,6 +577,12 @@ test_formats(GLenum target)
 		program = piglit_build_simple_program(vertex_cube_map_array,
 						      fragment_cube_map_array);
 		break;
+	case GL_TEXTURE_RECTANGLE_ARB:
+		glMatrixMode(GL_TEXTURE);
+		glScalef(DEFAULT_TEX_WIDTH, DEFAULT_TEX_HEIGHT, 1.0f);
+		glMatrixMode(GL_MODELVIEW);
+		glEnable(target);
+		break;
 	default:
 		glEnable(target);
 		break;
@@ -626,6 +633,12 @@ test_formats(GLenum target)
 		glDeleteProgram(program);
 	}
 
+	if (target == GL_TEXTURE_RECTANGLE_ARB) {
+		glMatrixMode(GL_TEXTURE);
+		glLoadIdentity();
+		glMatrixMode(GL_MODELVIEW);
+	}
+
 	return pass;
 }
 
@@ -654,6 +667,10 @@ piglit_init(int argc, char **argv)
 		GL_TEXTURE_3D,
 		GL_NONE
 	};
+	static const GLenum rectangle_targets[] = {
+		GL_TEXTURE_RECTANGLE_ARB,
+		GL_NONE
+	};
 	static const GLenum array_targets[] = {
 		GL_TEXTURE_1D_ARRAY_EXT,
 		GL_TEXTURE_2D_ARRAY_EXT,
@@ -669,7 +686,10 @@ piglit_init(int argc, char **argv)
 	test_targets = core_targets;
 
 	for (i = 1; i < argc; i++) {
-		if (!strcmp(argv[i], "array")) {
+		if (!strcmp(argv[i], "rectangle")) {
+			piglit_require_extension("GL_ARB_texture_rectangle");
+			test_targets = rectangle_targets;
+		} else if (!strcmp(argv[i], "array")) {
 			piglit_require_extension("GL_EXT_texture_array");
 			piglit_require_GLSL();
 			test_targets = array_targets;

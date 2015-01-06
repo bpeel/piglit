@@ -537,7 +537,9 @@ test_format(GLenum target, GLenum intFormat)
 			printf("texsubimage failed\n");
 			printf("  target: %s\n", piglit_get_gl_enum_name(target));
 			printf("  internal format: %s\n", piglit_get_gl_enum_name(intFormat));
-			printf("  region: %d, %d  %d x %d\n", tx, ty, tw, th);
+			printf("  region: %d,%d,%d  %dx%dx%d\n",
+			       tx, ty, tz,
+			       tw, th, td);
 			pass = GL_FALSE;
 			break;
 		}

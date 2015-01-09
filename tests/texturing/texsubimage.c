@@ -374,6 +374,43 @@ create_texture(GLenum target,
 	return tex;
 }
 
+static GLuint
+create_sub_pbo(GLubyte *original_img,
+	       int w, int h, int d,
+	       int tx, int ty, int tz,
+	       int tw, int th, int td)
+{
+	GLuint pbo;
+	int y, z;
+
+	if (d == 1)
+		td = 1;
+	if (h == 1)
+		th = 1;
+
+	glGenBuffers(1, &pbo);
+	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
+	glBufferData(GL_PIXEL_UNPACK_BUFFER,
+		     tw * th * td * 4,
+		     NULL, /* data */
+		     GL_STATIC_DRAW);
+
+	for (z = 0; z < td; z++) {
+		for (y = 0; y < th; y++) {
+			glBufferSubData(GL_PIXEL_UNPACK_BUFFER,
+					z * tw * th * 4 +
+					y * tw * 4,
+					tw * 4,
+					original_img +
+					(z + tz) * w * h * 4 +
+					(y + ty) * w * 4 +
+					tx * 4);
+		}
+	}
+
+	return pbo;
+}
+
 /**
  * Create two textures with different reference values. Draw both of
  * the textures to the framebuffer and save the reference images with
@@ -496,13 +533,34 @@ test_format(GLenum target, GLenum intFormat)
 		assert(ty + th <= h);
 		assert(tz + td <= d);
 
-		if (use_pbo)
-			glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
+		GLuint pbo2 = 0;
 
-		/* replace texture region with data from updated image */
-		glPixelStorei(GL_UNPACK_SKIP_PIXELS, tx);
-		glPixelStorei(GL_UNPACK_SKIP_ROWS, ty);
-		glPixelStorei(GL_UNPACK_SKIP_IMAGES, tz);
+		if (use_pbo) {
+			if (srcFormat == GL_RGBA) {
+				pbo2 = create_sub_pbo(updated_img,
+						      w, h, d,
+						      tx, ty, tz,
+						      tw, th, td);
+				glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+				glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+				glPixelStorei(GL_UNPACK_SKIP_IMAGES, 0);
+				glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+				glPixelStorei(GL_UNPACK_IMAGE_HEIGHT, 0);
+			} else {
+				glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
+				glPixelStorei(GL_UNPACK_SKIP_PIXELS, tx);
+				glPixelStorei(GL_UNPACK_SKIP_ROWS, ty);
+				glPixelStorei(GL_UNPACK_SKIP_IMAGES, tz);
+			}
+		} else {
+			glPixelStorei(GL_UNPACK_SKIP_PIXELS, tx);
+			glPixelStorei(GL_UNPACK_SKIP_ROWS, ty);
+			glPixelStorei(GL_UNPACK_SKIP_IMAGES, tz);
+		}
+
+		/* replace texture region with data from updated
+		 * image */
+
 		if (d > 1) {
 			glTexSubImage3D(target, 0, tx, ty, tz, tw, th, td,
 					srcFormat, GL_UNSIGNED_BYTE,
@@ -519,8 +577,11 @@ test_format(GLenum target, GLenum intFormat)
 			assert(!"Unknown image dimensions");
 		}
 
-		if (use_pbo)
+		if (use_pbo) {
 			glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+			if (pbo2)
+				glDeleteBuffers(1, &pbo2);
+		}
 
 		/* draw test image */
 		glClear(GL_COLOR_BUFFER_BIT);

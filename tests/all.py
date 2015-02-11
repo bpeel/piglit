@@ -2927,6 +2927,7 @@ with profile.group_manager(
     g(['getteximage-targets', '1D_ARRAY'])
     g(['getteximage-targets', '2D_ARRAY'])
     g(['texsubimage', 'array'])
+    g(['tex1d-array-mipmap'])
     add_msaa_visual_plain_tests(g, ['copyteximage', '1D_ARRAY'],
                                 run_concurrent=False)
     add_msaa_visual_plain_tests(g, ['copyteximage', '2D_ARRAY'],

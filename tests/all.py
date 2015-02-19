@@ -1006,6 +1006,7 @@ with profile.group_manager(
     g(['mipmap-setup'], run_concurrent=False)
     g(['tex-skipped-unit'], run_concurrent=False)
     g(['tex3d'], run_concurrent=False)
+    g(['tex3d-mipmap'], run_concurrent=False)
     g(['tex3d-maxsize'], run_concurrent=False)
     g(['teximage-errors'], run_concurrent=False)
     g(['texture-packed-formats'], run_concurrent=False)

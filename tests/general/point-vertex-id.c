@@ -102,39 +102,39 @@ piglit_display(void)
 	glDrawArrays(GL_TRIANGLES, 0, ARRAY_SIZE(vertices));
 
 	/* Area below the dots */
-	pass = pass && piglit_probe_rect_rgba(0, 0,
-					      piglit_width,
-					      vertices[0].y,
-					      black);
+	pass &= piglit_probe_rect_rgba(0, 0,
+				       piglit_width,
+				       vertices[0].y,
+				       black);
 	/* Left of the dots */
-	pass = pass && piglit_probe_rect_rgba(0, vertices[0].y,
-					      vertices[0].x,
-					      vertices[1].y - vertices[0].y + 1,
-					      black);
+	pass &= piglit_probe_rect_rgba(0, vertices[0].y,
+				       vertices[0].x,
+				       vertices[1].y - vertices[0].y + 1,
+				       black);
 	/* In-between the dots */
-	pass = pass && piglit_probe_rect_rgba(vertices[0].x + 1,
-					      vertices[0].y,
-					      vertices[1].x - vertices[0].x - 1,
-					      vertices[1].y - vertices[0].y + 1,
-					      black);
+	pass &= piglit_probe_rect_rgba(vertices[0].x + 1,
+				       vertices[0].y,
+				       vertices[1].x - vertices[0].x - 1,
+				       vertices[1].y - vertices[0].y + 1,
+				       black);
 	/* Right of the dots */
-	pass = pass && piglit_probe_rect_rgba(vertices[1].x + 1,
-					      vertices[0].y,
-					      piglit_width - vertices[1].x - 1,
-					      vertices[1].y - vertices[0].y + 1,
-					      black);
+	pass &= piglit_probe_rect_rgba(vertices[1].x + 1,
+				       vertices[0].y,
+				       piglit_width - vertices[1].x - 1,
+				       vertices[1].y - vertices[0].y + 1,
+				       black);
 	/* Above the dots */
-	pass = pass && piglit_probe_rect_rgba(0, vertices[2].y + 1,
-					      piglit_width,
-					      piglit_height - vertices[2].y - 1,
-					      black);
+	pass &= piglit_probe_rect_rgba(0, vertices[2].y + 1,
+				       piglit_width,
+				       piglit_height - vertices[2].y - 1,
+				       black);
 
 	/* At the dots */
 	for (i = 0; i < ARRAY_SIZE(vertices); i++) {
 		if (vertices[i].edge_flag) {
-			pass = pass && piglit_probe_pixel_rgba(vertices[i].x,
-							       vertices[i].y,
-							       white);
+			pass &= piglit_probe_pixel_rgba(vertices[i].x,
+							vertices[i].y,
+							white);
 		}
 	}
 

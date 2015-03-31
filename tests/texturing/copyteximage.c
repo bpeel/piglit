@@ -47,7 +47,7 @@ static const GLfloat fcolor[8][4] = {
 	{0.5, 0.5, 0.5, 0.4},
 	/* GL_INTENSITY */
 	{0.5, 0.5, 0.5, 0.5},
-	/* GL_DEPTH_COMPONENT */
+	/* GL_DEPTH_COMPONENT, GL_STENCIL_INDEX */
 	{0.75, 0.75, 0.75, 1.0} };
 
 static const struct {
@@ -90,6 +90,8 @@ static const struct {
 
 	{ GL_DEPTH24_STENCIL8,	fcolor[7] },
 	{ GL_DEPTH32F_STENCIL8, fcolor[7] },
+
+	{ GL_STENCIL_INDEX8, fcolor[7] }
 };
 
 static const struct {
@@ -119,25 +121,6 @@ PIGLIT_GL_TEST_CONFIG_BEGIN
 			       PIGLIT_GL_VISUAL_DEPTH | PIGLIT_GL_VISUAL_STENCIL;
 
 PIGLIT_GL_TEST_CONFIG_END
-
-static const char array1D_shader_text[] =
-	"#extension GL_EXT_texture_array: require\n"
-	"uniform sampler1DArray s;\n"
-	"void main()\n"
-	"{\n"
-	"    gl_FragColor = texture1DArray(s, gl_TexCoord[0].xy);\n"
-	"}\n"
-	;
-
-static const char array2D_shader_text[] =
-	"#extension GL_EXT_texture_array: require\n"
-	"uniform sampler2DArray s;\n"
-	"void main()\n"
-	"{\n"
-	"    gl_FragColor = texture2DArray(s, gl_TexCoord[0].xyz);\n"
-	"}\n"
-	;
-
 
 static GLboolean
 is_compressed_format(GLenum format)
@@ -169,6 +152,108 @@ is_depth_format(GLenum format)
 	}
 }
 
+static bool
+is_stencil_format(GLenum format)
+{
+	switch (format) {
+	case GL_STENCIL_INDEX8:
+		return true;
+	default:
+		return false;
+	}
+}
+
+static GLuint
+create_shader(GLenum target, GLenum format)
+{
+	bool is_stencil, is_array;
+	char buf[1024], *p = buf;
+	const char *suffix, *swizzle;
+	GLuint prog;
+	GLuint s_location;
+
+	is_array = (target == GL_TEXTURE_1D_ARRAY ||
+		    target == GL_TEXTURE_2D_ARRAY);
+	is_stencil = is_stencil_format(format);
+
+	/* We only need a shader for array targets and stencil
+	 * formats.
+	 */
+	if (!is_array && !is_stencil)
+		return 0;
+
+	switch (target) {
+	case GL_TEXTURE_1D:
+		suffix = "1D";
+		swizzle = "s";
+		break;
+	case GL_TEXTURE_2D:
+		suffix = "2D";
+		swizzle = "st";
+		break;
+	case GL_TEXTURE_3D:
+		suffix = "3D";
+		swizzle = "stp";
+		break;
+	case GL_TEXTURE_CUBE_MAP:
+		suffix = "Cube";
+		swizzle = "stp";
+		break;
+	case GL_TEXTURE_1D_ARRAY:
+		suffix = "1DArray";
+		swizzle = "st";
+		break;
+	case GL_TEXTURE_2D_ARRAY:
+		suffix = "2DArray";
+		swizzle = "stp";
+		break;
+	case GL_TEXTURE_RECTANGLE:
+		suffix = "Rect";
+		swizzle = "st";
+		break;
+	default:
+		assert(!"Unknown texture target");
+		return 0;
+	}
+
+	if (is_stencil) {
+		p += sprintf(p,
+			     "#version 130\n"
+			     "uniform sampler%s s;\n"
+			     "void main()\n"
+			     "{\n"
+			     "        gl_FragColor = vec4(vec3("
+			     "float(texture(s, gl_TexCoord[0].%s).r) / 255.0),"
+			     "1.0);\n"
+			     "}\n",
+			     suffix, swizzle);
+	} else {
+		if (is_array) {
+			p += sprintf(p,
+				     "#extension GL_EXT_texture_array : "
+				     "require\n");
+		}
+
+		p += sprintf(p,
+			     "uniform sampler%s s;\n"
+			     "void main()\n"
+			     "{\n"
+			     "        gl_FragColor = texture%s(s, "
+			     "gl_TexCoord[0].%s);\n"
+			     "}\n",
+			     suffix, suffix, swizzle);
+	}
+
+	prog = piglit_build_simple_program(NULL, buf);
+	glUseProgram(prog);
+	glDeleteProgram(prog);
+
+	s_location = glGetUniformLocation(prog, "s");
+	glUniform1i(s_location, 0);
+
+	return prog;
+}
+
 /** is the given texture internal format supported? */
 static bool
 supported_format(GLenum format)
@@ -194,6 +279,16 @@ supported_format(GLenum format)
 	case GL_DEPTH_COMPONENT32F:
 	case GL_DEPTH32F_STENCIL8:
 		return piglit_is_extension_supported("GL_ARB_depth_buffer_float");
+	case GL_STENCIL_INDEX8:
+		if (!piglit_is_extension_supported("GL_ARB_texture_stencil8") ||
+		    piglit_get_gl_version() < 20)
+			return false;
+		bool es;
+		int major, minor;
+		piglit_get_glsl_version(&es, &major, &minor);
+		if (major < 1 || (major == 1 && minor < 3))
+			return false;
+		return true;
 	default:
 		return true;
 	}
@@ -203,7 +298,8 @@ supported_format(GLenum format)
 static bool
 supported_target_format(GLenum target, GLenum format)
 {
-	if (is_depth_format(format) && target == GL_TEXTURE_3D) {
+	if ((is_depth_format(format) || is_stencil_format(format)) &&
+	    target == GL_TEXTURE_3D) {
 		return false;
 	}
 	return true;
@@ -232,6 +328,8 @@ static GLenum get_format(GLenum format)
 		return GL_DEPTH_STENCIL;
 	else if (is_depth_format(format))
 		return GL_DEPTH_COMPONENT;
+	else if (is_stencil_format(format))
+		return GL_STENCIL_INDEX;
 	else
 		return GL_RGBA;
 }
@@ -273,10 +371,18 @@ static void draw_depth(float scale)
 	glClear(GL_DEPTH_BUFFER_BIT);
 }
 
+static void draw_stencil(float scale)
+{
+	glClearStencil(roundf(255 * scale));
+	glClear(GL_STENCIL_BUFFER_BIT);
+}
+
 static void draw(GLenum format, float scale)
 {
 	if (is_depth_format(format))
 		draw_depth(scale);
+	else if (is_stencil_format(format))
+		draw_stencil(scale);
 	else
 		draw_pixels(scale);
 }
@@ -395,8 +501,8 @@ test_target_and_format(GLint x, GLint y, GLenum target, GLenum format,
 		       const GLfloat *expected)
 {
 	GLboolean pass = GL_TRUE;
+	GLuint prog;
 	GLuint k;
-	GLuint prog = 0;
 
 	printf("Texture target = %s, Internal format = %s",
 	       piglit_get_gl_enum_name(target),
@@ -419,6 +525,10 @@ test_target_and_format(GLint x, GLint y, GLenum target, GLenum format,
 	else
 		piglit_set_tolerance_for_bits(8, 8, 8, 8);
 
+	prog = create_shader(target, format);
+	if (prog == 0)
+		glEnable(target);
+
 	switch(target) {
 
 	case GL_TEXTURE_1D:
@@ -429,7 +539,6 @@ test_target_and_format(GLint x, GLint y, GLenum target, GLenum format,
 		pass = piglit_check_gl_error(GL_NO_ERROR)
 			&& pass;
 
-		glEnable(target);
 		piglit_draw_rect_tex(x, y, IMAGE_SIZE, IMAGE_SIZE,
 				      0, 0, 1, 1);
 		pass = piglit_probe_rect_rgba(x, y, IMAGE_SIZE,
@@ -444,7 +553,6 @@ test_target_and_format(GLint x, GLint y, GLenum target, GLenum format,
 				 IMAGE_SIZE, IMAGE_SIZE, 0);
 		pass = piglit_check_gl_error(GL_NO_ERROR) && pass;
 
-		glEnable(target);
 		piglit_draw_rect_tex(x, y, IMAGE_SIZE, IMAGE_SIZE,
 				      0, 0, 1, 1);
 		pass = piglit_probe_rect_rgba(x, y, IMAGE_SIZE,
@@ -465,8 +573,6 @@ test_target_and_format(GLint x, GLint y, GLenum target, GLenum format,
 
 		pass = piglit_check_gl_error(GL_NO_ERROR) && pass;
 
-		glEnable(target);
-
 		for (k = 0; k < 4; k++) {
 			const float tz = (k + 0.5) * 0.25;
 			draw_rect_tex_3d(x, y, IMAGE_SIZE, IMAGE_SIZE,
@@ -486,8 +592,6 @@ test_target_and_format(GLint x, GLint y, GLenum target, GLenum format,
 
 		pass = piglit_check_gl_error(GL_NO_ERROR) && pass;
 
-		glEnable(target);
-
 		for (k = 0; k < 6; k++) {
 			draw_rect_tex_cube_face(x, y, IMAGE_SIZE, IMAGE_SIZE, k);
 			pass = probe_rect(x, y, IMAGE_SIZE, IMAGE_SIZE,
@@ -506,10 +610,6 @@ test_target_and_format(GLint x, GLint y, GLenum target, GLenum format,
 		}
 
 		pass = piglit_check_gl_error(GL_NO_ERROR) && pass;
-
-		prog = piglit_build_simple_program(NULL, array1D_shader_text);
-		glUseProgram(prog);
-		glDeleteProgram(prog);
 
 		for (k = 0; k < 16; k++) {
 			piglit_draw_rect_tex(x, y, IMAGE_SIZE, IMAGE_SIZE,
@@ -531,10 +631,6 @@ test_target_and_format(GLint x, GLint y, GLenum target, GLenum format,
 
 		pass = piglit_check_gl_error(GL_NO_ERROR) && pass;
 
-		prog = piglit_build_simple_program(NULL, array2D_shader_text);
-		glUseProgram(prog);
-		glDeleteProgram(prog);
-
 		for (k = 0; k < 4; k++) {
 			draw_rect_tex_3d(x, y, IMAGE_SIZE, IMAGE_SIZE,
 					 0, 0, k, 1, 1);
@@ -548,8 +644,7 @@ test_target_and_format(GLint x, GLint y, GLenum target, GLenum format,
 		glCopyTexImage2D(GL_TEXTURE_RECTANGLE, 0, format, 0, 0,
 				 IMAGE_SIZE, IMAGE_SIZE, 0);
 		pass = piglit_check_gl_error(GL_NO_ERROR) && pass;
-		
-		glEnable(target);
+
 		piglit_draw_rect_tex(x, y, IMAGE_SIZE, IMAGE_SIZE,
 				      0, 0, IMAGE_SIZE - 1, IMAGE_SIZE - 1);
 		pass = piglit_probe_rect_rgba(x, y, IMAGE_SIZE,

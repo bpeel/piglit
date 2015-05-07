@@ -97,4 +97,6 @@ piglit_add_executable (texture-rg texture-rg.c)
 piglit_add_executable (teximage-colors teximage-colors.c)
 piglit_add_executable (zero-tex-coord zero-tex-coord.c)
 
+piglit_add_executable (simple-ms simple-ms.c)
+
 # vim: ft=cmake:

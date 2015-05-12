@@ -11,6 +11,9 @@ PIGLIT_GL_TEST_CONFIG_END
 static const GLfloat red[4] = { 1.0f, 0.0f, 0.0f, 1.0f };
 static const GLfloat green[4] = { 0.0f, 1.0f, 0.0f, 1.0f };
 
+#define TEX_WIDTH 64
+#define TEX_HEIGHT 128
+
 static const char
 vertex_source[] =
 	"#version 130\n"
@@ -38,8 +41,12 @@ fragment_source[] =
 	"void\n"
 	"main()\n"
 	"{\n"
-	"        color = texelFetch(tex, "
-	"ivec2(texcoord * textureSize(tex)), 0);\n"
+	"        ivec2 tex_size = textureSize(tex);\n"
+	"        tex_size.s *= 2;\n"
+	"        ivec2 coord = ivec2(texcoord * tex_size);\n"
+	"        color = texelFetch(tex,\n"
+	"                           ivec2(coord.s >> 1, coord.t),\n"
+	"                           coord.s & 1);\n"
 	"}\n";
 
 static GLuint program;
@@ -55,7 +62,7 @@ piglit_display(void)
 	glGenTextures(1, &tex);
 	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, tex);
 	glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, 2,
-				GL_RGBA, 16, 16, GL_FALSE);
+				GL_RGBA, TEX_WIDTH, TEX_HEIGHT, GL_FALSE);
 
 	glGenFramebuffers(1, &fbo);
 	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
@@ -70,7 +77,7 @@ piglit_display(void)
 
 	glClearColor(1.0f, 0.0f, 0.0f, 0.0f);
 	glEnable(GL_SCISSOR_TEST);
-	glScissor(8, 0, 8, 16);
+	glScissor(TEX_WIDTH / 2, 0, TEX_WIDTH / 2, TEX_HEIGHT);
 	glClear(GL_COLOR_BUFFER_BIT);
 	glDisable(GL_SCISSOR_TEST);
 
@@ -82,12 +89,14 @@ piglit_display(void)
 	glClear(GL_COLOR_BUFFER_BIT);
 
 	piglit_draw_rect_tex(-1.0f, -1.0f,
-			     16 * 2.0f / piglit_width,
-			     16 * 2.0f / piglit_height,
+			     TEX_WIDTH * 2 * 2.0f / piglit_width,
+			     TEX_HEIGHT * 2.0f / piglit_height,
 			     0.0f, 0.0f, 1.0f, 1.0f);
 
-	pass = piglit_probe_rect_rgb(0, 0, 8, 16, green) && pass;
-	pass = piglit_probe_rect_rgb(8, 0, 8, 16, red) && pass;
+	pass = piglit_probe_rect_rgb(0, 0, TEX_WIDTH,
+				     TEX_HEIGHT, green) && pass;
+	pass = piglit_probe_rect_rgb(TEX_WIDTH, 0, TEX_WIDTH,
+				     TEX_HEIGHT, red) && pass;
 
 	glDeleteTextures(1, &tex);
 

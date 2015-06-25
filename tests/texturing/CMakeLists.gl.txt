@@ -99,4 +99,6 @@ piglit_add_executable (zero-tex-coord zero-tex-coord.c)
 
 piglit_add_executable (simple-ms simple-ms.c)
 
+piglit_add_executable (centroid centroid.c)
+
 # vim: ft=cmake:

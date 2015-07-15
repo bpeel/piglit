@@ -46,12 +46,13 @@ vertex_shader[] =
 	"layout(location = 0) in vec2 piglit_vertex;\n"
 	"layout(location = 1) in vec3 vertex_color;\n"
 	"layout(location = 2) in vec2 vertex_offset;\n"
+	"layout(location = 3) in float alpha;\n"
 	"\n"
 	"void\n"
 	"main()\n"
 	"{\n"
 	"        gl_Position = vec4(piglit_vertex + vertex_offset, 0.0, 1.0);\n"
-	"        gl_FrontColor = vec4(vertex_color, 1.0);\n"
+	"        gl_FrontColor = vec4(vertex_color, alpha);\n"
 	"}\n";
 
 static const char
@@ -70,40 +71,59 @@ vertex_shader_instance_id[] =
 	"        gl_Position = vec4(piglit_vertex + vertex_offset, 0.0, 1.0);\n"
 	"        gl_Position.y -= 1.0;\n"
 	"        gl_FrontColor = vec4(vertex_color.rg,\n"
-	"                             float(gl_InstanceID),\n"
+	"                             float(gl_VertexID / 6),\n"
 	"                             1.0);\n"
 	"}\n";
 
 struct vertex {
 	float x, y;
+	float r, g, b;
 };
 
 struct instance {
-	float r, g, b;
 	float x, y;
+	float alpha;
 };
+
+#define RED 1.0f, 0.0f, 0.0f
+#define BLUE 0.0f, 0.0f, 1.0f
 
 static const struct vertex
 vertices[] = {
-	/* Triangle strip forming a square in the top-left quadrant */
-	{ -1, 0 },
-	{ 0, 0 },
-	{ -1, 1 },
-	{ 0, 1 }
+	/* Triangles to make a narrow strip with filling the top
+	 * quarter of the window. The left half will be red and the
+	 * right half blue.
+	 */
+	{ -1.0f, 0.5f, RED },
+	{ 0.0f, 0.5f, RED },
+	{ -1.0f, 1.0f, RED },
+
+	{ 0.0f, 0.5f, RED },
+	{ 0.0f, 1.0f, RED },
+	{ -1.0f, 1.0f, RED },
+
+	{ 0.0f, 0.5f, BLUE },
+	{ 1.0f, 0.5f, BLUE },
+	{ 0.0f, 1.0f, BLUE },
+
+	{ 1.0f, 0.5f, BLUE },
+	{ 1.0f, 1.0f, BLUE },
+	{ 0.0f, 1.0f, BLUE },
 };
 
 static const struct instance
 instances[] = {
-	/* Red square on the left */
-	{ 1.0f, 0.0f, 0.0f, 0.0f, 0.0f },
-	/* Blue square on the left */
-	{ 0.0f, 0.0f, 1.0f, 1.0f, 0.0f }
+	/* Draw the narrow band twice so that it fills a whole half of
+	 * the window.
+	 */
+	{ 0.0f, 0.0f, 1.0f },
+	{ 0.0f, -0.5f, 1.0f },
 };
 
 static const GLfloat
-red[] = { 1.0f, 0.0f, 0.0f };
+red[] = { RED };
 static const GLfloat
-blue[] = { 0.0f, 0.0f, 1.0f };
+blue[] = { BLUE };
 
 enum piglit_result
 piglit_display(void)
@@ -135,22 +155,21 @@ piglit_display(void)
 			      (void *) (intptr_t)
 			      offsetof(struct vertex, x));
 
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(1, /* location */
+			      3, /* size */
+			      GL_FLOAT,
+			      GL_FALSE, /* normalized */
+			      sizeof (struct vertex),
+			      (void *) (intptr_t)
+			      offsetof(struct vertex, r));
+
 	glGenBuffers(1, &ibo);
 	glBindBuffer(GL_ARRAY_BUFFER, ibo);
 	glBufferData(GL_ARRAY_BUFFER,
 		     sizeof instances,
 		     instances,
 		     GL_STATIC_DRAW);
-
-	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(1, /* location */
-			      3, /* size */
-			      GL_FLOAT,
-			      GL_FALSE, /* normalized */
-			      sizeof (struct instance),
-			      (void *) (intptr_t)
-			      offsetof(struct instance, r));
-	glVertexAttribDivisor(1, 1);
 
 	glEnableVertexAttribArray(2);
 	glVertexAttribPointer(2, /* location */
@@ -162,19 +181,29 @@ piglit_display(void)
 			      offsetof(struct instance, x));
 	glVertexAttribDivisor(2, 1);
 
+	glEnableVertexAttribArray(3);
+	glVertexAttribPointer(3, /* location */
+			      1, /* size */
+			      GL_FLOAT,
+			      GL_FALSE, /* normalized */
+			      sizeof (struct instance),
+			      (void *) (intptr_t)
+			      offsetof(struct instance, alpha));
+	glVertexAttribDivisor(3, 1);
+
 	glUseProgram(program_normal);
 
-	glDrawArraysInstanced(GL_TRIANGLE_STRIP,
+	glDrawArraysInstanced(GL_TRIANGLES,
 			      0, /* first */
 			      ARRAY_SIZE(vertices),
-			      2 /* primcount */);
+			      ARRAY_SIZE(instances));
 
 	glUseProgram(program_iid);
 
-	glDrawArraysInstanced(GL_TRIANGLE_STRIP,
+	glDrawArraysInstanced(GL_TRIANGLES,
 			      0, /* first */
 			      ARRAY_SIZE(vertices),
-			      2 /* primcount */);
+			      ARRAY_SIZE(instances));
 
 	glUseProgram(0);
 	glDeleteProgram(program_iid);

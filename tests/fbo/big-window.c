@@ -27,7 +27,7 @@
 #include "piglit-util-gl.h"
 
 /* GL3 requirement. */
-#define MAX_DIM 8192
+#define MAX_DIM (8192 - 512 / 4)
 
 PIGLIT_GL_TEST_CONFIG_BEGIN
 

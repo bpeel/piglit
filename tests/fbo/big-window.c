@@ -44,8 +44,14 @@ PIGLIT_GL_TEST_CONFIG_END
 enum piglit_result
 piglit_display(void)
 {
-	glClearColor(0.2, 0.1, 0.1, 1.0);
+	const float color[] = { 0.2, 0.1, 0.1, 1.0 };
+
+	glClearColor(color[0], color[1], color[2], color[3]);
 	glClear(GL_COLOR_BUFFER_BIT);
+
+	piglit_probe_rect_rgb(0, 0,
+			      piglit_width, piglit_height,
+			      color);
 
 	return PIGLIT_PASS;
 }

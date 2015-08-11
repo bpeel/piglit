@@ -51,13 +51,14 @@ fragment_shader_source[] =
 	"#version 330\n"
 	"layout(location = 0) out int result;\n"
 	"uniform isampler2D tex;\n"
+	"uniform int other_int;\n"
 	"\n"
 	"void\n"
 	"main()\n"
 	"{\n"
 	"        int test_num = int(gl_FragCoord.x);\n"
 	"        ivec2 src = texelFetch(tex, ivec2(test_num, 0), 0).rg;\n"
-	"        result = src.r * src.g;\n"
+	"        result = src.r * other_int;\n"
 	"}\n";
 
 enum piglit_result
@@ -72,11 +73,12 @@ piglit_init(int argc, char**argv)
 	GLuint fbo, rb;
 	GLuint tex;
 	GLuint prog;
-	GLuint tex_uniform;
+	GLuint uniform_location;
 	int src_buf[N_TESTS * 2];
 	int results[N_TESTS];
 	bool pass = true;
 	const char *note;
+	int other_int;
 	int i;
 
 	glGenFramebuffers(1, &fbo);
@@ -97,8 +99,12 @@ piglit_init(int argc, char**argv)
 		piglit_report_result(PIGLIT_FAIL);
 	}
 
-	for (i = 0; i < N_TESTS * 2; i++)
-		src_buf[i] = (rand() & 0xffff) | (rand() << 16);
+	other_int = (rand() & 0xffff) | (rand() << 16);
+
+	for (i = 0; i < N_TESTS; i++) {
+		src_buf[i * 2] = (rand() & 0xffff) | (rand() << 16);
+		src_buf[i * 2 + 1] = other_int;
+	}
 
 	glGenTextures(1, &tex);
 	glBindTexture(GL_TEXTURE_2D, tex);
@@ -115,8 +121,10 @@ piglit_init(int argc, char**argv)
 	prog = piglit_build_simple_program(vertex_shader_source,
 					   fragment_shader_source);
 	glUseProgram(prog);
-	tex_uniform = glGetUniformLocation(prog, "tex");
-	glUniform1i(tex_uniform, 0);
+	uniform_location = glGetUniformLocation(prog, "tex");
+	glUniform1i(uniform_location, 0);
+	uniform_location = glGetUniformLocation(prog, "other_int");
+	glUniform1i(uniform_location, other_int);
 
 	glClear(GL_COLOR_BUFFER_BIT);
 	piglit_draw_rect(-1, -1, 2, 2);

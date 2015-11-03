@@ -2752,6 +2752,7 @@ with profile.group_manager(
     g(['ext_framebuffer_multisample-alpha-blending'], 'alpha-blending')
     g(['ext_framebuffer_multisample-alpha-blending', 'slow_cc'],
       'alpha-blending slow_cc')
+    g(['ext_framebuffer_multisample-fast-clear-rgb'], 'fast-clear-rgb')
 
     for num_samples in MSAA_SAMPLE_COUNTS:
         if num_samples % 2 != 0:

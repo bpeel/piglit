@@ -4340,6 +4340,13 @@ with profile.group_manager(
 
 with profile.group_manager(
         PiglitGLTest,
+        grouptools.join('spec', 'egl_khr_surfaceless_context'),
+        exclude_platforms=['glx']) as g:
+    g(['egl-surfaceless-context-viewport'], 'viewport',
+      run_concurrent=False)
+
+with profile.group_manager(
+        PiglitGLTest,
         grouptools.join('spec', 'egl_mesa_configless_context'),
         exclude_platforms=['glx']) as g:
     g(['egl-configless-context'], 'basic')

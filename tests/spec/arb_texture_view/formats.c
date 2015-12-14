@@ -49,8 +49,18 @@ PIGLIT_GL_TEST_CONFIG_END
 
 static const char *TestName = "arb_texture_view-formats";
 
-#define MAX_ILLEGAL_FORMATS 17
 #define VIEW_CLASS_NOT_IN_TABLE 0xfffffff
+
+#define FORMATS_24					\
+	GL_RGB8, GL_RGB8_SNORM, GL_SRGB8, GL_RGB8UI,	\
+	GL_RGB8I
+#define FORMATS_32					\
+	GL_RG16F, GL_R11F_G11F_B10F, GL_R32F,		\
+	GL_RGB10_A2UI, GL_RGBA8UI, GL_RG16UI,		\
+	GL_R32UI, GL_RGBA8I, GL_RG16I,			\
+	GL_R32I, GL_RGB10_A2, GL_RGBA8, GL_RG16,	\
+	GL_RGBA8_SNORM, GL_RG16_SNORM,			\
+	GL_SRGB8_ALPHA8, GL_RGB9_E5
 
 /**
  * Iterate through array of texture formats and check if call to TextureView
@@ -96,8 +106,9 @@ test_format_errors(GLenum format_class)
 	GLenum target = GL_TEXTURE_CUBE_MAP;
 	GLuint tex;
 	bool pass = true;
-	GLenum legalFormats[MAX_ILLEGAL_FORMATS];
 	unsigned int numFormats;
+	bool rgb_32_supported =
+		piglit_is_extension_supported("GL_MESA_texture_view_rgb_32");
 	GLenum illegalFormats[] = {
 		/* skip compressed sized formats */
 		/* 128 bit */
@@ -184,6 +195,7 @@ test_format_errors(GLenum format_class)
 		/* format that is legal for TexStorage but not in table */
 		GL_RGB12
 	};
+	GLenum legalFormats[ARRAY_SIZE(illegalFormats)];
 
 	glGenTextures(1, &tex);   /* orig tex */
 	glBindTexture(target, tex);
@@ -218,21 +230,41 @@ test_format_errors(GLenum format_class)
 		break;
 	case GL_VIEW_CLASS_32_BITS:
 		glTexStorage2D(target, levels, GL_RG16F, width, height);
-		numFormats = update_valid_arrays(legalFormats, illegalFormats,
-				    ARRAY_SIZE(illegalFormats),
-				    GL_RG16F, GL_R11F_G11F_B10F, GL_R32F,
-				    GL_RGB10_A2UI, GL_RGBA8UI, GL_RG16UI,
-				    GL_R32UI, GL_RGBA8I, GL_RG16I,
-				    GL_R32I, GL_RGB10_A2, GL_RGBA8, GL_RG16,
-				    GL_RGBA8_SNORM, GL_RG16_SNORM,
-				    GL_SRGB8_ALPHA8, GL_RGB9_E5, 0);
+		if (rgb_32_supported) {
+			numFormats =
+				update_valid_arrays(legalFormats,
+						    illegalFormats,
+						    ARRAY_SIZE(illegalFormats),
+						    FORMATS_24,
+						    FORMATS_32,
+						    0);
+		} else {
+			numFormats =
+				update_valid_arrays(legalFormats,
+						    illegalFormats,
+						    ARRAY_SIZE(illegalFormats),
+						    FORMATS_32,
+						    0);
+		}
 		break;
 	case GL_VIEW_CLASS_24_BITS:
 		glTexStorage2D(target, levels, GL_RGB8, width, height);
-		numFormats = update_valid_arrays(legalFormats, illegalFormats,
-				    ARRAY_SIZE(illegalFormats),
-				    GL_RGB8, GL_RGB8_SNORM, GL_SRGB8,
-				    GL_RGB8UI, GL_RGB8I, 0);
+		if (rgb_32_supported) {
+			numFormats =
+				update_valid_arrays(legalFormats,
+						    illegalFormats,
+						    ARRAY_SIZE(illegalFormats),
+						    FORMATS_24,
+						    FORMATS_32,
+						    0);
+		} else {
+			numFormats =
+				update_valid_arrays(legalFormats,
+						    illegalFormats,
+						    ARRAY_SIZE(illegalFormats),
+						    FORMATS_24,
+						    0);
+		}
 		break;
 	case GL_VIEW_CLASS_16_BITS:
 		glTexStorage2D(target, levels, GL_R16F, width, height);
